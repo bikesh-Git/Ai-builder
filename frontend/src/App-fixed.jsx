@@ -35,7 +35,7 @@ function App() {
       });
 
       const result = await response.json();
-
+      console.log(result)
       if (result.success) {
         setGeneratedCode(result);
         setErrors([]); // Clear any previous errors
@@ -147,15 +147,21 @@ function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          repoUrl,
+          repoUrl: repoUrl.trim(),
           commitMessage: 'AI Generated Code Update'
         })
       });
 
       const result = await response.json();
-      alert(result.message);
+
+      if (result.success) {
+        alert(`✅ ${result.message}`);
+        setShowRepoInput(false);
+      } else {
+        alert(`❌ ${result.message}`);
+      }
     } catch (error) {
-      alert(`Failed to push to GitHub: ${error.message}`);
+      alert(`❌ Failed to push to GitHub: ${error.message}`);
     }
   };
 

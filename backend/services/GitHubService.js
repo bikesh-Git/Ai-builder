@@ -8,6 +8,16 @@ class GitHubService {
     this.repoPath = null;
   }
 
+  validateGitHubUrl(url) {
+    // Accept both HTTPS and SSH GitHub URLs, with or without .git suffix
+    const githubUrlPatterns = [
+      /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(?:\.git)?$/,
+      /^git@github\.com:[\w.-]+\/[\w.-]+(?:\.git)?$/
+    ];
+
+    return githubUrlPatterns.some(pattern => pattern.test(url));
+  }
+
   async initializeRepo(repoPath, gitUrl = null) {
     try {
       this.repoPath = repoPath;
@@ -21,36 +31,19 @@ class GitHubService {
         await this.git.init();
 
         if (gitUrl) {
+          if (!this.validateGitHubUrl(gitUrl)) {
+            throw new Error('Invalid GitHub repository URL. Please use format: https://github.com/username/repository or https://github.com/username/repository.git');
+          }
           await this.git.addRemote('origin', gitUrl);
         }
-
-        const gitignorePath = path.join(repoPath, '.gitignore');
-        const gitignoreContent = `node_modules/
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-dist/
-build/
-.DS_Store
-*.log`;
-
-        await fs.writeFile(gitignorePath, gitignoreContent);
-
-        const readmePath = path.join(repoPath, 'README.md');
-        const readmeContent = `# Generated React App
-
-This is an AI-generated React application created with Claude AI.
-
-## Getting Started
-
-\`\`\`bash
-npm install
-npm start
-\`\`\`
-`;
-        await fs.writeFile(readmePath, readmeContent);
+      } else {
+        // Repository already exists, just update remote if needed
+        if (gitUrl) {
+          if (!this.validateGitHubUrl(gitUrl)) {
+            throw new Error('Invalid GitHub repository URL. Please use format: https://github.com/username/repository or https://github.com/username/repository.git');
+          }
+          await this.setRemoteUrl(gitUrl);
+        }
       }
 
       return true;
@@ -80,7 +73,11 @@ npm start
 
       if (remotes.length > 0) {
         try {
-          await this.git.push('origin', 'main');
+          // Get current branch name
+          const status = await this.git.status();
+          const currentBranch = status.current;
+
+          await this.git.push('origin', currentBranch);
           return {
             success: true,
             message: `Successfully pushed ${status.files.length} files to GitHub`,
@@ -88,21 +85,51 @@ npm start
           };
         } catch (pushError) {
           try {
-            await this.git.push('origin', 'master');
+            // Fallback to main if current branch fails
+            await this.git.push('origin', 'main');
             return {
               success: true,
               message: `Successfully pushed ${status.files.length} files to GitHub`,
               files: status.files.map(f => f.path)
             };
           } catch (pushError2) {
-            console.error('Push error:', pushError2);
-            return {
-              success: false,
-              message: 'Failed to push to remote repository. Please check your repository settings.',
-              localCommit: true
-            };
+            try {
+              // Fallback to master as last resort
+              await this.git.push('origin', 'master');
+              return {
+                success: true,
+                message: `Successfully pushed ${status.files.length} files to GitHub`,
+                files: status.files.map(f => f.path)
+              };
+            } catch (pushError3) {
+            console.error('Push error:', pushError3);
+            const errorMessage = pushError3.message || pushError3.toString();
+
+            if (errorMessage.includes('authentication')) {
+              return {
+                success: false,
+                message: 'Authentication failed. Please check your GitHub credentials and repository access.',
+                localCommit: true,
+                error: 'AUTHENTICATION_ERROR'
+              };
+            } else if (errorMessage.includes('not found') || errorMessage.includes('does not exist')) {
+              return {
+                success: false,
+                message: 'Repository not found. Please check if the repository URL is correct and you have access to it.',
+                localCommit: true,
+                error: 'REPOSITORY_NOT_FOUND'
+              };
+            } else {
+              return {
+                success: false,
+                message: `Failed to push to GitHub: ${errorMessage}`,
+                localCommit: true,
+                error: 'PUSH_ERROR'
+              };
+            }
           }
         }
+      }
       } else {
         return {
           success: true,

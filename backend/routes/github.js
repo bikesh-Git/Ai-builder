@@ -8,11 +8,20 @@ router.post('/push', async (req, res) => {
   try {
     const { repoUrl, commitMessage } = req.body;
 
-    const repoPath = path.join(__dirname, '../git-repo');
+
+    if (!repoUrl) {
+      return res.status(400).json({
+        success: false,
+        message: 'Repository URL is required'
+      });
+    }
+
+    // Use the main project directory instead of the separate git-repo
+    const repoPath = path.join(__dirname, '../../');
 
     await githubService.initializeRepo(repoPath, repoUrl);
 
-    await githubService.copyWorkspaceToRepo(projectState.workspaceDir);
+    // Skip copying workspace since we're working with the main project directly
 
     const result = await githubService.commitAndPush(
       commitMessage || 'AI Generated Code Update'
