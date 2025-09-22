@@ -22,8 +22,10 @@ try {
   const githubRoutes = require('./routes/github');
   const fixRoutes = require('./routes/fix');
   const previewRoutes = require('./routes/preview');
+  const generateRoutes = require('./routes/generate');
 
   app.use('/api/prompt', promptRoutes);
+  app.use('/api/generate', generateRoutes);
   app.use('/api/github', githubRoutes);
   app.use('/api/fix', fixRoutes);
   app.use('/preview', previewRoutes);

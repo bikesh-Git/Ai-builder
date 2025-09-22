@@ -1,50 +1,45 @@
-const Anthropic = require('@anthropic-ai/sdk');
+const axios = require('axios');
 
-class ClaudeService {
+class OllamaService {
   constructor() {
-    this.anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    this.baseURL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+    this.model = process.env.OLLAMA_MODEL || 'llama3:latest';
   }
 
   async generateReactCode(prompt, existingComponents = {}) {
     try {
-      const systemPrompt = `You are an expert React developer. Generate clean, functional React components based on user prompts.
+      const systemPrompt = `You are an expert React developer. Generate ONLY valid React component code.
 
-RULES:
-1. Always return valid JSX code that can be directly saved as a .jsx file
-2. Use modern React with hooks (useState, useEffect, etc.)
-3. Include necessary imports
-4. Make components functional and interactive when appropriate
-5. Use inline styles or className for styling
-6. Return only the component code, no explanations
-7. If updating existing components, maintain their structure but apply the requested changes
+CRITICAL RULES:
+1. Return ONLY React component code - NO explanations, NO markdown, NO descriptions
+2. Start with "import React" and end with "export default ComponentName;"
+3. Use functional components with hooks (useState, useEffect, etc.)
+4. Include inline styles for immediate functionality
+5. Make components interactive and functional
+6. NO code blocks or explanatory text
+7. Component must be syntactically correct and runnable
 
-Existing components in the project:
-${Object.keys(existingComponents).map(name => `- ${name}: Available component`).join('\n')}
+Generate React component code for this request:`;
 
-Generate React component code that fulfills this request:`;
-
-      const response = await this.anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 4000,
-        temperature: 0.3,
-        system: systemPrompt,
-        messages: [{
-          role: 'user',
-          content: prompt
-        }]
+      const response = await axios.post(`${this.baseURL}/api/generate`, {
+        model: this.model,
+        prompt: `${systemPrompt}\n\n${prompt}`,
+        stream: false,
+        options: {
+          temperature: 0.3,
+          num_predict: 1000
+        }
       });
 
-      let code = response.content[0].text;
+      let code = response.data.response;
 
       // Clean up markdown formatting
       code = code.replace(/```jsx\n/g, '').replace(/```js\n/g, '').replace(/```javascript\n/g, '').replace(/```\n/g, '').replace(/```$/g, '');
 
       return code;
     } catch (error) {
-      console.error('Claude API Error:', error);
-      throw new Error('Failed to generate code with Claude API');
+      console.error('Ollama API Error:', error);
+      throw new Error('Failed to generate code with Ollama API');
     }
   }
 
@@ -59,14 +54,9 @@ RULES:
 4. Use modern React patterns
 5. Return valid JSX code that can be directly saved`;
 
-      const response = await this.anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 4000,
-        temperature: 0.1,
-        system: systemPrompt,
-        messages: [{
-          role: 'user',
-          content: `Fix this React code:
+      const response = await axios.post(`${this.baseURL}/api/generate`, {
+        model: this.model,
+        prompt: `${systemPrompt}\n\nFix this React code:
 
 CODE:
 ${code}
@@ -74,29 +64,31 @@ ${code}
 ERROR:
 ${error}
 
-Return the corrected code:`
-        }]
+Return the corrected code:`,
+        stream: false,
+        options: {
+          temperature: 0.1,
+          num_predict: 4000
+        }
       });
 
-      let code = response.content[0].text;
+      let fixedCode = response.data.response;
 
       // Clean up markdown formatting
-      code = code.replace(/```jsx\n/g, '').replace(/```js\n/g, '').replace(/```javascript\n/g, '').replace(/```\n/g, '').replace(/```$/g, '');
+      fixedCode = fixedCode.replace(/```jsx\n/g, '').replace(/```js\n/g, '').replace(/```javascript\n/g, '').replace(/```\n/g, '').replace(/```$/g, '');
 
-      return code;
+      return fixedCode;
     } catch (error) {
-      console.error('Claude Fix API Error:', error);
-      throw new Error('Failed to fix code with Claude API');
+      console.error('Ollama Fix API Error:', error);
+      throw new Error('Failed to fix code with Ollama API');
     }
   }
 
   async analyzeAndSuggestComponents(prompt) {
     try {
-      const response = await this.anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 2000,
-        temperature: 0.5,
-        system: `Analyze the user's prompt and suggest what React components should be created or modified. Return a JSON object with component names and their purposes.
+      const response = await axios.post(`${this.baseURL}/api/generate`, {
+        model: this.model,
+        prompt: `Analyze the user's prompt and suggest what React components should be created or modified. Return a JSON object with component names and their purposes.
 
 Format:
 {
@@ -107,15 +99,18 @@ Format:
       "action": "create" or "update"
     }
   ]
-}`,
-        messages: [{
-          role: 'user',
-          content: `Analyze this request and suggest components: ${prompt}`
-        }]
+}
+
+Analyze this request and suggest components: ${prompt}`,
+        stream: false,
+        options: {
+          temperature: 0.5,
+          num_predict: 500
+        }
       });
 
       try {
-        return JSON.parse(response.content[0].text);
+        return JSON.parse(response.data.response);
       } catch (parseError) {
         return {
           components: [{
@@ -126,7 +121,7 @@ Format:
         };
       }
     } catch (error) {
-      console.error('Claude Analysis Error:', error);
+      console.error('Ollama Analysis Error:', error);
       return {
         components: [{
           name: "GeneratedComponent",
@@ -138,4 +133,4 @@ Format:
   }
 }
 
-module.exports = new ClaudeService();
+module.exports = new OllamaService();

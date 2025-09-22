@@ -11,6 +11,9 @@ router.get('/', async (req, res) => {
     const html = generatePreviewHTML(components, mainApp);
 
     res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.send(html);
 
   } catch (error) {
@@ -125,7 +128,7 @@ const generatePreviewHTML = (components, mainApp) => {
                     <span class="status-indicator"></span>
                     Live React App Preview
                     <span style="margin-left: auto; font-size: 12px; color: #6c757d;">
-                        ${new Date().toLocaleTimeString()}
+                        AI Generated
                     </span>
                 </h3>
             </div>

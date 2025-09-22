@@ -18,9 +18,6 @@ const Preview = ({ generatedCode, onError, isLoading }) => {
 
   const refreshPreview = () => {
     setPreviewKey(prev => prev + 1);
-    if (iframeRef.current) {
-      iframeRef.current.src = iframeRef.current.src;
-    }
   };
 
   const handleIframeError = (error) => {
@@ -124,7 +121,7 @@ const Preview = ({ generatedCode, onError, isLoading }) => {
                 <iframe
                   key={previewKey}
                   ref={iframeRef}
-                  src={`http://localhost:3001/preview?t=${Date.now()}`}
+                  src={`http://localhost:3001/preview`}
                   style={styles.iframe}
                   title="Live React App Preview"
                   onError={handleIframeError}

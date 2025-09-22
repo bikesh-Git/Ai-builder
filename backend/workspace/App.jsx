@@ -5,6 +5,7 @@ import ButtonPad from './components/ButtonPad';
 import Calculator from './components/Calculator';
 import Display from './components/Display';
 import FormInput from './components/FormInput';
+import GeneratedComponent from './components/GeneratedComponent';
 import GreetingCard from './components/GreetingCard';
 import HelloButton from './components/HelloButton';
 import InputField from './components/InputField';
@@ -24,6 +25,7 @@ function App() {
         <Calculator />
         <Display />
         <FormInput />
+        <GeneratedComponent />
         <GreetingCard />
         <HelloButton />
         <InputField />

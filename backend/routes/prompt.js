@@ -4,29 +4,39 @@ const claudeService = require('../services/ClaudeService');
 const projectState = require('../utils/projectState');
 
 router.post('/', async (req, res) => {
+  console.log('🚀 Prompt API called with:', req.body);
   try {
     const { prompt, componentName } = req.body;
 
     if (!prompt) {
+      console.log('❌ No prompt provided');
       return res.status(400).json({
         success: false,
         message: 'Prompt is required'
       });
     }
 
-    const existingComponents = await projectState.getAllComponents();
+    console.log('✅ Processing prompt:', prompt);
 
+    console.log('📂 Getting existing components...');
+    const existingComponents = await projectState.getAllComponents();
+    console.log('📂 Existing components:', Object.keys(existingComponents));
+
+    console.log('🔍 Analyzing components with Ollama...');
     const analysis = await claudeService.analyzeAndSuggestComponents(prompt);
+    console.log('🔍 Analysis complete:', analysis);
 
     const results = [];
 
     for (const component of analysis.components) {
       const targetName = componentName || component.name;
+      console.log('🎯 Generating code for component:', targetName);
 
       const generatedCode = await claudeService.generateReactCode(
         prompt,
         existingComponents
       );
+      console.log('✅ Code generated for:', targetName);
 
       await projectState.saveComponent(targetName, generatedCode);
 

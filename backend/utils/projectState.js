@@ -56,6 +56,8 @@ class ProjectState {
 
   async getAllComponents() {
     try {
+      await this.initializeWorkspace();
+
       const components = {};
       const files = await fs.readdir(this.componentsDir);
 
